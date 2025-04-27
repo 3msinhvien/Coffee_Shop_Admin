@@ -53,15 +53,32 @@ export default function CategoriesPage() {
   }
 
   const handleSaveCategory = async (category: Category) => {
-    // In a real app, this would call the API to save the category
-    if (selectedCategory) {
-      // Update existing category
-      setCategories(categories.map((c) => (c.id === category.id ? category : c)))
-    } else {
-      // Add new category with a fake ID
-      setCategories([...categories, { ...category, id: `temp-${Date.now()}` }])
+    try {
+      if (selectedCategory) {
+        // Gọi API update category ở đây nếu cần
+      } else {
+        // Gọi API tạo mới category
+        const response = await fetch("http://localhost:8000/api/categories/create", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title: category.title }),
+        })
+        if (!response.ok) throw new Error("Failed to create category")
+        const data = await response.json()
+        setCategories([...categories, data.category])
+        toast({
+          title: "Category created",
+          description: "The category has been successfully created.",
+        })
+      }
+      setIsDialogOpen(false)
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to save category.",
+      })
     }
-    setIsDialogOpen(false)
   }
 
   const handleDeleteCategory = async (id: string) => {
