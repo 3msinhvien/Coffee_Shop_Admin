@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { CategoriesTable } from "@/components/categories/categories-table"
 import { CategoryDialog } from "@/components/categories/category-dialog"
-import { fetchCategories } from "@/lib/api"
+import { DeleteConfirmDialog } from "@/components/shared/delete-confirm-dialog"
 import { useToast } from "@/hooks/use-toast"
 import type { Category } from "@/types"
 
@@ -16,27 +16,35 @@ export default function CategoriesPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null)
   const { toast } = useToast()
 
-  useEffect(() => {
-    const loadCategories = async () => {
-      try {
-        const data = await fetchCategories()
-        setCategories(data)
-      } catch (error) {
-        console.error("Failed to load categories:", error)
-        toast({
-          variant: "destructive",
-          title: "Error loading categories",
-          description: "There was a problem loading the categories. Please try again later.",
-        })
-      } finally {
-        setIsLoading(false)
+  // Fetch categories from API
+  const fetchCategories = async () => {
+    setIsLoading(true)
+    try {
+      const response = await fetch("http://127.0.0.1:8000/api/categories")
+      if (!response.ok) {
+        throw new Error(`Error: ${response.status}`)
       }
+      const data = await response.json()
+      setCategories(data.categories || [])
+    } catch (error) {
+      console.error("Failed to fetch categories:", error)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to load categories. Please try again later.",
+      })
+    } finally {
+      setIsLoading(false)
     }
+  }
 
-    loadCategories()
-  }, [toast])
+  useEffect(() => {
+    fetchCategories()
+  }, [])
 
   const filteredCategories = categories.filter((category) =>
     category.title.toLowerCase().includes(searchQuery.toLowerCase()),
@@ -52,42 +60,102 @@ export default function CategoriesPage() {
     setIsDialogOpen(true)
   }
 
-  const handleSaveCategory = async (category: Category) => {
+  const handleDeleteClick = (category: Category) => {
+    setCategoryToDelete(category)
+    setDeleteDialogOpen(true)
+  }
+
+  const handleSaveCategory = async (category: Partial<Category>) => {
     try {
       if (selectedCategory) {
-        // Gọi API update category ở đây nếu cần
-      } else {
-        // Gọi API tạo mới category
-        const response = await fetch("http://localhost:8000/api/categories/create", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+        // Update existing category
+        const response = await fetch(`http://127.0.0.1:8000/api/categories/edit/${selectedCategory.id}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
           body: JSON.stringify({ title: category.title }),
         })
-        if (!response.ok) throw new Error("Failed to create category")
+
+        if (!response.ok) {
+          throw new Error(`Error: ${response.status}`)
+        }
+
         const data = await response.json()
+
+        // Update the categories list with the updated category
+        setCategories(categories.map((c) => (c.id === data.category.id ? data.category : c)))
+
+        toast({
+          title: "Category updated",
+          description: "Category has been updated successfully.",
+        })
+      } else {
+        // Create new category
+        const response = await fetch("http://127.0.0.1:8000/api/categories/create", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ title: category.title }),
+        })
+
+        if (!response.ok) {
+          throw new Error(`Error: ${response.status}`)
+        }
+
+        const data = await response.json()
+
+        // Add the new category to the list
         setCategories([...categories, data.category])
+
         toast({
           title: "Category created",
-          description: "The category has been successfully created.",
+          description: "New category has been created successfully.",
         })
       }
+
       setIsDialogOpen(false)
     } catch (error) {
+      console.error("Failed to save category:", error)
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to save category.",
+        description: "Failed to save category. Please try again.",
       })
     }
   }
 
-  const handleDeleteCategory = async (id: string) => {
-    // In a real app, this would call the API to delete the category
-    setCategories(categories.filter((c) => c.id !== id))
-    toast({
-      title: "Category deleted",
-      description: "The category has been successfully deleted.",
-    })
+  const handleDeleteCategory = async () => {
+    if (!categoryToDelete) return
+
+    try {
+      const response = await fetch(`http://127.0.0.1:8000/api/categories/delete/${categoryToDelete.id}`, {
+        method: "DELETE",
+      })
+
+      if (!response.ok) {
+        throw new Error(`Error: ${response.status}`)
+      }
+
+      // Remove the deleted category from the list
+      setCategories(categories.filter((c) => c.id !== categoryToDelete.id))
+
+      toast({
+        title: "Category deleted",
+        description: "Category has been deleted successfully.",
+      })
+
+      setDeleteDialogOpen(false)
+      setCategoryToDelete(null)
+    } catch (error) {
+      console.error("Failed to delete category:", error)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to delete category. Please try again.",
+      })
+    }
   }
 
   return (
@@ -117,7 +185,7 @@ export default function CategoriesPage() {
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
         </div>
       ) : (
-        <CategoriesTable categories={filteredCategories} onEdit={handleEditCategory} onDelete={handleDeleteCategory} />
+        <CategoriesTable categories={filteredCategories} onEdit={handleEditCategory} onDelete={handleDeleteClick} />
       )}
 
       <CategoryDialog
@@ -125,6 +193,14 @@ export default function CategoriesPage() {
         onOpenChange={setIsDialogOpen}
         category={selectedCategory}
         onSave={handleSaveCategory}
+      />
+
+      <DeleteConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Delete Category"
+        description={`Are you sure you want to delete the category "${categoryToDelete?.title}"? This action cannot be undone.`}
+        onConfirm={handleDeleteCategory}
       />
     </div>
   )

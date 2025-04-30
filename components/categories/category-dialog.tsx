@@ -14,58 +14,44 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { useToast } from "@/hooks/use-toast"
 import type { Category } from "@/types"
 
 interface CategoryDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   category: Category | null
-  onSave: (category: Category) => void
+  onSave: (category: Partial<Category>) => void
 }
 
 export function CategoryDialog({ open, onOpenChange, category, onSave }: CategoryDialogProps) {
-  const { toast } = useToast()
-  const [isLoading, setIsLoading] = useState(false)
   const [title, setTitle] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState("")
 
   useEffect(() => {
     if (open) {
       setTitle(category?.title || "")
+      setError("")
     }
   }, [open, category])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    // Validate input
+    if (!title.trim()) {
+      setError("Category name is required")
+      return
+    }
+
     setIsLoading(true)
+    setError("")
 
     try {
-      if (!title.trim()) {
-        throw new Error("Category name is required")
-      }
-
-      const now = new Date().toISOString()
-      const updatedCategory: Category = {
-        id: category?.id || `temp-${Date.now()}`,
-        title,
-        created_at: category?.created_at || now,
-        updated_at: now,
-      }
-
-      onSave(updatedCategory)
-
-      toast({
-        title: `Category ${category ? "updated" : "created"} successfully`,
-        description: `${title} has been ${category ? "updated" : "added"} to your categories.`,
-      })
-
-      onOpenChange(false)
+      await onSave({ title })
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to save category",
-      })
+      console.error("Error saving category:", error)
+      setError("Failed to save category. Please try again.")
     } finally {
       setIsLoading(false)
     }
@@ -89,12 +75,13 @@ export function CategoryDialog({ open, onOpenChange, category, onSave }: Categor
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Enter category name"
-                required
+                disabled={isLoading}
               />
+              {error && <p className="text-sm text-destructive">{error}</p>}
             </div>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
               Cancel
             </Button>
             <Button type="submit" disabled={isLoading}>

@@ -14,58 +14,44 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { useToast } from "@/hooks/use-toast"
 import type { Tag } from "@/types"
 
 interface TagDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   tag: Tag | null
-  onSave: (tag: Tag) => void
+  onSave: (tag: Partial<Tag>) => void
 }
 
 export function TagDialog({ open, onOpenChange, tag, onSave }: TagDialogProps) {
-  const { toast } = useToast()
-  const [isLoading, setIsLoading] = useState(false)
   const [name, setName] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState("")
 
   useEffect(() => {
     if (open) {
       setName(tag?.name || "")
+      setError("")
     }
   }, [open, tag])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    // Validate input
+    if (!name.trim()) {
+      setError("Tag name is required")
+      return
+    }
+
     setIsLoading(true)
+    setError("")
 
     try {
-      if (!name.trim()) {
-        throw new Error("Tag name is required")
-      }
-
-      const now = new Date().toISOString()
-      const updatedTag: Tag = {
-        id: tag?.id || `temp-${Date.now()}`,
-        name,
-        created_at: tag?.created_at || now,
-        updated_at: now,
-      }
-
-      onSave(updatedTag)
-
-      toast({
-        title: `Tag ${tag ? "updated" : "created"} successfully`,
-        description: `${name} has been ${tag ? "updated" : "added"} to your tags.`,
-      })
-
-      onOpenChange(false)
+      await onSave({ name })
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to save tag",
-      })
+      console.error("Error saving tag:", error)
+      setError("Failed to save tag. Please try again.")
     } finally {
       setIsLoading(false)
     }
@@ -89,12 +75,13 @@ export function TagDialog({ open, onOpenChange, tag, onSave }: TagDialogProps) {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Enter tag name"
-                required
+                disabled={isLoading}
               />
+              {error && <p className="text-sm text-destructive">{error}</p>}
             </div>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
               Cancel
             </Button>
             <Button type="submit" disabled={isLoading}>

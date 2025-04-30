@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { TagsTable } from "@/components/tags/tags-table"
 import { TagDialog } from "@/components/tags/tag-dialog"
-import { fetchTags } from "@/lib/api"
+import { DeleteConfirmDialog } from "@/components/shared/delete-confirm-dialog"
 import { useToast } from "@/hooks/use-toast"
 import type { Tag } from "@/types"
 
@@ -16,27 +16,35 @@ export default function TagsPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [selectedTag, setSelectedTag] = useState<Tag | null>(null)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [tagToDelete, setTagToDelete] = useState<Tag | null>(null)
   const { toast } = useToast()
 
-  useEffect(() => {
-    const loadTags = async () => {
-      try {
-        const data = await fetchTags()
-        setTags(data)
-      } catch (error) {
-        console.error("Failed to load tags:", error)
-        toast({
-          variant: "destructive",
-          title: "Error loading tags",
-          description: "There was a problem loading the tags. Please try again later.",
-        })
-      } finally {
-        setIsLoading(false)
+  // Fetch tags from API
+  const fetchTags = async () => {
+    setIsLoading(true)
+    try {
+      const response = await fetch("http://127.0.0.1:8000/api/tags")
+      if (!response.ok) {
+        throw new Error(`Error: ${response.status}`)
       }
+      const data = await response.json()
+      setTags(data.tags || [])
+    } catch (error) {
+      console.error("Failed to fetch tags:", error)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to load tags. Please try again later.",
+      })
+    } finally {
+      setIsLoading(false)
     }
+  }
 
-    loadTags()
-  }, [toast])
+  useEffect(() => {
+    fetchTags()
+  }, [])
 
   const filteredTags = tags.filter((tag) => tag.name.toLowerCase().includes(searchQuery.toLowerCase()))
 
@@ -50,29 +58,102 @@ export default function TagsPage() {
     setIsDialogOpen(true)
   }
 
-  const handleSaveTag = async (tag: Tag) => {
-    // In a real app, this would call the API to save the tag
-    if (selectedTag) {
-      // Update existing tag
-      setTags(tags.map((t) => (t.id === tag.id ? tag : t)))
-    } else {
-      // Add new tag with a fake ID
-      setTags([...tags, { ...tag, id: `temp-${Date.now()}` }])
-    }
-    setIsDialogOpen(false)
-    toast({
-      title: `Tag ${selectedTag ? "updated" : "created"} successfully`,
-      description: `${tag.name} has been ${selectedTag ? "updated" : "added"} to your tags.`,
-    })
+  const handleDeleteClick = (tag: Tag) => {
+    setTagToDelete(tag)
+    setDeleteDialogOpen(true)
   }
 
-  const handleDeleteTag = async (id: string) => {
-    // In a real app, this would call the API to delete the tag
-    setTags(tags.filter((t) => t.id !== id))
-    toast({
-      title: "Tag deleted",
-      description: "The tag has been successfully deleted.",
-    })
+  const handleSaveTag = async (tag: Partial<Tag>) => {
+    try {
+      if (selectedTag) {
+        // Update existing tag
+        const response = await fetch(`http://127.0.0.1:8000/api/tags/edit/${selectedTag.id}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ name: tag.name }),
+        })
+
+        if (!response.ok) {
+          throw new Error(`Error: ${response.status}`)
+        }
+
+        const data = await response.json()
+
+        // Update the tags list with the updated tag
+        setTags(tags.map((t) => (t.id === data.tag.id ? data.tag : t)))
+
+        toast({
+          title: "Tag updated",
+          description: "Tag has been updated successfully.",
+        })
+      } else {
+        // Create new tag
+        const response = await fetch("http://127.0.0.1:8000/api/tags/create", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ name: tag.name }),
+        })
+
+        if (!response.ok) {
+          throw new Error(`Error: ${response.status}`)
+        }
+
+        const data = await response.json()
+
+        // Add the new tag to the list
+        setTags([...tags, data.tag])
+
+        toast({
+          title: "Tag created",
+          description: "New tag has been created successfully.",
+        })
+      }
+
+      setIsDialogOpen(false)
+    } catch (error) {
+      console.error("Failed to save tag:", error)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to save tag. Please try again.",
+      })
+    }
+  }
+
+  const handleDeleteTag = async () => {
+    if (!tagToDelete) return
+
+    try {
+      const response = await fetch(`http://127.0.0.1:8000/api/tags/delete/${tagToDelete.id}`, {
+        method: "DELETE",
+      })
+
+      if (!response.ok) {
+        throw new Error(`Error: ${response.status}`)
+      }
+
+      // Remove the deleted tag from the list
+      setTags(tags.filter((t) => t.id !== tagToDelete.id))
+
+      toast({
+        title: "Tag deleted",
+        description: "Tag has been deleted successfully.",
+      })
+
+      setDeleteDialogOpen(false)
+      setTagToDelete(null)
+    } catch (error) {
+      console.error("Failed to delete tag:", error)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to delete tag. Please try again.",
+      })
+    }
   }
 
   return (
@@ -102,10 +183,18 @@ export default function TagsPage() {
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
         </div>
       ) : (
-        <TagsTable tags={filteredTags} onEdit={handleEditTag} onDelete={handleDeleteTag} />
+        <TagsTable tags={filteredTags} onEdit={handleEditTag} onDelete={handleDeleteClick} />
       )}
 
       <TagDialog open={isDialogOpen} onOpenChange={setIsDialogOpen} tag={selectedTag} onSave={handleSaveTag} />
+
+      <DeleteConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Delete Tag"
+        description={`Are you sure you want to delete the tag "${tagToDelete?.name}"? This action cannot be undone.`}
+        onConfirm={handleDeleteTag}
+      />
     </div>
   )
 }

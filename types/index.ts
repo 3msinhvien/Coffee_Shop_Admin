@@ -37,6 +37,7 @@ export interface Product {
   updated_at: string
 }
 
+// Category types
 export interface Category {
   id: string
   title: string
@@ -44,6 +45,7 @@ export interface Category {
   updated_at: string
 }
 
+// Tag types
 export interface Tag {
   id: string
   name: string
@@ -107,8 +109,16 @@ export interface TagsResponse {
   tags: Tag[]
 }
 
+export interface TagResponse {
+  tag: Tag
+}
+
 export interface CategoriesResponse {
   categories: Category[]
+}
+
+export interface CategoryResponse {
+  category: Category
 }
 
 export interface ProductsResponse {
