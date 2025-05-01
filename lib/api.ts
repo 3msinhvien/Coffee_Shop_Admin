@@ -14,7 +14,7 @@ import type {
   ApiResponse,
 } from "@/types"
 
-const API_BASE_URL = "http://localhost:8000/api"
+const API_BASE_URL = "http://127.0.0.1:8000/api"
 
 // Helper function for API calls
 async function apiCall<T>(endpoint: string, options?: RequestInit): Promise<T> {
@@ -225,6 +225,57 @@ export async function createProduct(productData: Partial<Product>): Promise<Prod
   }
 }
 
+// Create a new product with image upload
+export async function createProductWithImage(formData: FormData): Promise<Product> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/product`, {
+      method: "POST",
+      body: formData,
+      // Don't set Content-Type header, let the browser set it with the boundary parameter
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(errorData.message || `API error: ${response.status}`)
+    }
+
+    const data = await response.json()
+    return data.product
+  } catch (error) {
+    console.error("Failed to create product:", error)
+    throw error
+  }
+}
+
+// Update a product
+export async function updateProduct(id: string, productData: Partial<Product>): Promise<Product> {
+  try {
+    const response = await apiCall<ProductResponse>(`/product/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(productData),
+    })
+    return response.product
+  } catch (error) {
+    console.error(`Failed to update product with ID ${id}:`, error)
+    throw error
+  }
+}
+
+// Delete a product
+export async function deleteProduct(id: string): Promise<void> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/product/delete/${id}`, {
+      method: "DELETE",
+    });
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+  } catch (error) {
+    console.error(`Failed to delete product with ID ${id}:`, error);
+    throw error;
+  }
+}
+
 // Get price range for products
 export async function fetchPriceRange(): Promise<{ min: number; max: number }> {
   try {
@@ -256,7 +307,7 @@ export async function createReview(productId: string, rating: number, comment: s
   }
 }
 
-// Fetch all categories
+// Cập nhật các hàm liên quan đến Category API
 export async function fetchCategories(): Promise<Category[]> {
   try {
     const response = await apiCall<CategoriesResponse>("/categories")
@@ -281,7 +332,47 @@ export async function fetchCategories(): Promise<Category[]> {
   }
 }
 
-// Fetch all tags
+// Thêm hàm tạo category mới
+export async function createCategory(title: string): Promise<Category> {
+  try {
+    const response = await apiCall<{ category: Category }>("/categories/create", {
+      method: "POST",
+      body: JSON.stringify({ title }),
+    })
+    return response.category
+  } catch (error) {
+    console.error("Failed to create category:", error)
+    throw error
+  }
+}
+
+// Thêm hàm sửa category
+export async function updateCategory(id: string, title: string): Promise<Category> {
+  try {
+    const response = await apiCall<{ category: Category }>(`/categories/edit/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ title }),
+    })
+    return response.category
+  } catch (error) {
+    console.error("Failed to update category:", error)
+    throw error
+  }
+}
+
+// Thêm hàm xóa category
+export async function deleteCategory(id: string): Promise<void> {
+  try {
+    await apiCall<ApiResponse>(`/categories/delete/${id}`, {
+      method: "DELETE",
+    })
+  } catch (error) {
+    console.error("Failed to delete category:", error)
+    throw error
+  }
+}
+
+// Cập nhật các hàm liên quan đến Tag API
 export async function fetchTags(): Promise<Tag[]> {
   try {
     const response = await apiCall<TagsResponse>("/tags")
@@ -303,6 +394,46 @@ export async function fetchTags(): Promise<Tag[]> {
         updated_at: "2025-04-26T10:00:00Z",
       },
     ]
+  }
+}
+
+// Cập nhật hàm tạo tag mới
+export async function createTag(name: string): Promise<Tag> {
+  try {
+    const response = await apiCall<{ tag: Tag }>("/tags/create", {
+      method: "POST",
+      body: JSON.stringify({ name }),
+    })
+    return response.tag
+  } catch (error) {
+    console.error("Failed to create tag:", error)
+    throw error
+  }
+}
+
+// Cập nhật hàm sửa tag
+export async function updateTag(id: string, name: string): Promise<Tag> {
+  try {
+    const response = await apiCall<{ tag: Tag }>(`/tags/edit/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ name }),
+    })
+    return response.tag
+  } catch (error) {
+    console.error("Failed to update tag:", error)
+    throw error
+  }
+}
+
+// Cập nhật hàm xóa tag
+export async function deleteTag(id: string): Promise<void> {
+  try {
+    await apiCall<ApiResponse>(`/tags/delete/${id}`, {
+      method: "DELETE",
+    })
+  } catch (error) {
+    console.error("Failed to delete tag:", error)
+    throw error
   }
 }
 
@@ -424,4 +555,81 @@ export async function setNewPassword(email: string, code: string, password: stri
   }
 }
 
-// Mock data for orders
+// // Mock data for orders
+// export async function fetchOrders(): Promise<Order[]> {
+//   // Simulate API call delay
+//   await new Promise((resolve) => setTimeout(resolve, 500))
+
+//   return [
+//     {
+//       id: "ORD-001",
+//       customer: {
+//         name: "John Doe",
+//         email: "john.doe@example.com",
+//         phone: "123-456-7890",
+//         address: {
+//           street: "123 Main St",
+//           city: "Anytown",
+//           state: "CA",
+//           zip: "91234",
+//           country: "USA",
+//         },
+//       },
+//       date: "2024-01-20T14:30:00Z",
+//       status: "processing",
+//       total: 55.5,
+//       subtotal: 50.0,
+//       tax: 2.5,
+//       shipping: 3.0,
+//       items: [
+//         { id: "ITEM-001", name: "Latte", quantity: 2, price: 4.5 },
+//         { id: "ITEM-002", name: "Muffin", quantity: 1, price: 6.0 },
+//       ],
+//       user: {
+//         id: "USER-001",
+//         email: "john@example.com",
+//       },
+//       products: [],
+//       delivery: "",
+//       totalPrice: 0,
+//       payment: "",
+//       created_at: "",
+//       updated_at: "",
+//     },
+//     {
+//       id: "ORD-002",
+//       customer: {
+//         name: "Jane Smith",
+//         email: "jane.smith@example.com",
+//         phone: "987-654-3210",
+//         address: {
+//           street: "456 Oak Ave",
+//           city: "Springfield",
+//           state: "IL",
+//           zip: "62704",
+//           country: "USA",
+//         },
+//       },
+//       date: "2024-01-22T09:15:00Z",
+//       status: "pending",
+//       total: 32.0,
+//       subtotal: 30.0,
+//       tax: 1.5,
+//       shipping: 0.5,
+//       items: [
+//         { id: "ITEM-003", name: "Coffee", quantity: 3, price: 3.0 },
+//         { id: "ITEM-004", name: "Donut", quantity: 2, price: 4.5 },
+//       ],
+//       user: {
+//         id: "USER-001",
+//         email: "john@example.com",
+//       },
+//       products: [],
+//       delivery: "",
+//       totalPrice: 0,
+//       payment: "",
+//       created_at: "",
+//       updated_at: "",
+//     },
+//   ]
+// }
