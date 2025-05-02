@@ -117,14 +117,12 @@ export function AddProductForm({ categories, tags, onSuccess }: AddProductFormPr
         formData.append("image", fileInputRef.current.files[0])
       }
 
-      // Append categories
-      selectedCategories.forEach((categoryId) => {
-        formData.append("categories", categoryId)
-      })
-
-      // Append tags if any
-      selectedTags.forEach((tagId) => {
-        formData.append("tags", tagId)
+      // Append categories and tags
+      selectedTags?.forEach((tag) => {
+        formData.append("tags[]", tag);
+      });
+      selectedCategories?.forEach((category) => {
+        formData.append("categories[]", category);
       })
 
       // Send request to API
