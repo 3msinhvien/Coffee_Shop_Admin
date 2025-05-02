@@ -3,6 +3,7 @@
 import type React from "react"
 
 import { useEffect, useState } from "react"
+import { useForm, FormProvider } from "react-hook-form"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -12,7 +13,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { FormLabel } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -24,27 +24,21 @@ interface ProductDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   product: Product | null
-  onSave: (product: Product) => void
+  onSave: (formData: FormData) => void
 }
 
 export function ProductDialog({ open, onOpenChange, product, onSave }: ProductDialogProps) {
   const { toast } = useToast()
+  const methods = useForm()
   const [isLoading, setIsLoading] = useState(false)
   const [categories, setCategories] = useState<Category[]>([])
   const [tags, setTags] = useState<Tag[]>([])
-  const [formData, setFormData] = useState<Partial<Product>>({
-    name: "",
-    description: "",
-    cost: 0,
-    quantity: 0,
-    image_url: "",
-    categories: [],
-    tags: [],
-  })
+  const [image, setImage] = useState<File | undefined>()
+  const [selectedCategories, setSelectedCategories] = useState<Category[]>([])
+  const [selectedTags, setSelectedTags] = useState<Tag[]>([])
 
   useEffect(() => {
     if (open) {
-      // Load categories and tags
       const loadData = async () => {
         try {
           const [categoriesData, tagsData] = await Promise.all([fetchCategories(), fetchTags()])
@@ -54,98 +48,72 @@ export function ProductDialog({ open, onOpenChange, product, onSave }: ProductDi
           console.error("Failed to load data:", error)
         }
       }
-
       loadData()
 
-      // Set form data if editing
       if (product) {
-        setFormData({
-          id: product.id,
+        methods.reset({
           name: product.name,
           description: product.description,
           cost: product.cost,
           quantity: product.quantity,
-          image_url: product.image_url || product.image,
-          categories: product.categories,
-          tags: product.tags,
         })
+        setSelectedCategories(product.categories || [])
+        setSelectedTags(product.tags || [])
       } else {
-        // Reset form for new product
-        setFormData({
+        methods.reset({
           name: "",
           description: "",
           cost: 0,
           quantity: 0,
-          image_url: "",
-          categories: [],
-          tags: [],
         })
+        setSelectedCategories([])
+        setSelectedTags([])
+        setImage(undefined)
       }
     }
   }, [open, product])
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
-  }
-
-  const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: Number.parseFloat(value) || 0 }))
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) setImage(file)
   }
 
   const handleCategoryChange = (value: string) => {
     const category = categories.find((c) => c.id === value)
-    if (category) {
-      setFormData((prev) => ({
-        ...prev,
-        categories: [...(prev.categories || []), category],
-      }))
-    }
+    if (category) setSelectedCategories((prev) => [...prev, category])
   }
 
   const handleRemoveCategory = (id: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      categories: prev.categories?.filter((c) => c.id !== id) || [],
-    }))
+    setSelectedCategories((prev) => prev.filter((c) => c.id !== id))
   }
 
   const handleTagChange = (value: string) => {
     const tag = tags.find((t) => t.id === value)
-    if (tag) {
-      setFormData((prev) => ({
-        ...prev,
-        tags: [...(prev.tags || []), tag],
-      }))
-    }
+    if (tag) setSelectedTags((prev) => [...prev, tag])
   }
 
   const handleRemoveTag = (id: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      tags: prev.tags?.filter((t) => t.id !== id) || [],
-    }))
+    setSelectedTags((prev) => prev.filter((t) => t.id !== id))
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSubmit = methods.handleSubmit(async (data) => {
     setIsLoading(true)
-
     try {
-      // Validate form
-      if (!formData.name) {
-        throw new Error("Product name is required")
-      }
+      const formData = new FormData()
+      formData.append("name", data.name)
+      formData.append("description", data.description || "")
+      formData.append("cost", data.cost.toString())
+      formData.append("quantity", data.quantity.toString())
+      if (image) formData.append("image", image)
+      selectedCategories.forEach((c) => formData.append("categories[]", c.id))
+      selectedTags.forEach((t) => formData.append("tags[]", t.id))
 
-      // Save product
-      onSave(formData as Product)
+      onSave(formData)
 
       toast({
         title: `Product ${product ? "updated" : "created"} successfully`,
-        description: `${formData.name} has been ${product ? "updated" : "added"} to your inventory.`,
+        description: `${data.name} has been ${product ? "updated" : "added"} to your inventory.`,
       })
-
       onOpenChange(false)
     } catch (error) {
       toast({
@@ -156,151 +124,104 @@ export function ProductDialog({ open, onOpenChange, product, onSave }: ProductDi
     } finally {
       setIsLoading(false)
     }
-  }
+  })
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="w-full max-w-3xl">
         <DialogHeader>
           <DialogTitle>{product ? "Edit Product" : "Add New Product"}</DialogTitle>
           <DialogDescription>
             {product ? "Update the product details below." : "Fill in the details to add a new product."}
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <FormLabel htmlFor="name">Product Name</FormLabel>
-              <Input id="name" name="name" value={formData.name || ""} onChange={handleChange} required />
-            </div>
-            <div className="space-y-2">
-              <FormLabel htmlFor="cost">Price ($)</FormLabel>
-              <Input
-                id="cost"
-                name="cost"
-                type="number"
-                step="0.01"
-                min="0"
-                value={formData.cost || ""}
-                onChange={handleNumberChange}
-                required
-              />
-            </div>
-          </div>
+        <FormProvider {...methods}>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+  <div className="space-y-2">
+    <label htmlFor="name" className="text-sm font-medium">Product Name</label>
+    <Input id="name" {...methods.register("name", { required: true })} />
+  </div>
+  <div className="space-y-2">
+    <label htmlFor="cost" className="text-sm font-medium">Price ($)</label>
+    <Input id="cost" type="number" step="0.01" min="0" {...methods.register("cost", { required: true })} />
+  </div>
+</div>
 
-          <div className="space-y-2">
-            <FormLabel htmlFor="description">Description</FormLabel>
-            <Textarea
-              id="description"
-              name="description"
-              value={formData.description || ""}
-              onChange={handleChange}
-              rows={3}
-            />
-          </div>
+<div className="space-y-2">
+  <label htmlFor="description" className="text-sm font-medium">Description</label>
+  <Textarea id="description" rows={3} {...methods.register("description")} />
+</div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <FormLabel htmlFor="quantity">Stock Quantity</FormLabel>
-              <Input
-                id="quantity"
-                name="quantity"
-                type="number"
-                min="0"
-                value={formData.quantity || ""}
-                onChange={handleNumberChange}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <FormLabel htmlFor="image_url">Image URL</FormLabel>
-              <Input
-                id="image_url"
-                name="image_url"
-                value={formData.image_url || ""}
-                onChange={handleChange}
-                placeholder="https://example.com/image.jpg"
-              />
-            </div>
-          </div>
+<div className="grid grid-cols-2 gap-4">
+  <div className="space-y-2">
+    <label htmlFor="quantity" className="text-sm font-medium">Stock Quantity</label>
+    <Input id="quantity" type="number" min="0" {...methods.register("quantity", { required: true })} />
+  </div>
+  <div className="space-y-2">
+    <label htmlFor="image" className="text-sm font-medium">Product Image</label>
+    <Input id="image" type="file" accept="image/*" onChange={handleImageChange} />
+  </div>
+</div>
 
-          <div className="space-y-2">
-            <FormLabel>Categories</FormLabel>
-            <div className="flex flex-wrap gap-2 mb-2">
-              {formData.categories?.map((category) => (
-                <div key={category.id} className="flex items-center bg-muted rounded-md px-2 py-1">
-                  <span className="text-sm">{category.title}</span>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-auto p-1 ml-1"
-                    onClick={() => handleRemoveCategory(category.id)}
-                  >
-                    ×
-                  </Button>
-                </div>
-              ))}
-            </div>
-            <Select onValueChange={handleCategoryChange}>
-              <SelectTrigger>
-                <SelectValue placeholder="Add a category" />
-              </SelectTrigger>
-              <SelectContent>
-                {categories
-                  .filter((c) => !formData.categories?.some((sc) => sc.id === c.id))
-                  .map((category) => (
-                    <SelectItem key={category.id} value={category.id}>
-                      {category.title}
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
-          </div>
+<div className="space-y-2">
+  <label className="text-sm font-medium">Categories</label>
+  <div className="flex flex-wrap gap-2 mb-2">
+    {selectedCategories.map((category) => (
+      <div key={category.id} className="flex items-center bg-muted rounded-md px-2 py-1">
+        <span className="text-sm">{category.title}</span>
+        <Button type="button" variant="ghost" size="sm" className="h-auto p-1 ml-1" onClick={() => handleRemoveCategory(category.id)}>
+          ×
+        </Button>
+      </div>
+    ))}
+  </div>
+  <Select onValueChange={handleCategoryChange}>
+    <SelectTrigger>
+      <SelectValue placeholder="Add a category" />
+    </SelectTrigger>
+    <SelectContent>
+      {categories.filter((c) => !selectedCategories.some((sc) => sc.id === c.id)).map((category) => (
+        <SelectItem key={category.id} value={category.id}>{category.title}</SelectItem>
+      ))}
+    </SelectContent>
+  </Select>
+</div>
 
-          <div className="space-y-2">
-            <FormLabel>Tags</FormLabel>
-            <div className="flex flex-wrap gap-2 mb-2">
-              {formData.tags?.map((tag) => (
-                <div key={tag.id} className="flex items-center bg-muted rounded-md px-2 py-1">
-                  <span className="text-sm">{tag.name}</span>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-auto p-1 ml-1"
-                    onClick={() => handleRemoveTag(tag.id)}
-                  >
-                    ×
-                  </Button>
-                </div>
-              ))}
-            </div>
-            <Select onValueChange={handleTagChange}>
-              <SelectTrigger>
-                <SelectValue placeholder="Add a tag" />
-              </SelectTrigger>
-              <SelectContent>
-                {tags
-                  .filter((t) => !formData.tags?.some((st) => st.id === t.id))
-                  .map((tag) => (
-                    <SelectItem key={tag.id} value={tag.id}>
-                      {tag.name}
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
-          </div>
+<div className="space-y-2">
+  <label className="text-sm font-medium">Tags</label>
+  <div className="flex flex-wrap gap-2 mb-2">
+    {selectedTags.map((tag) => (
+      <div key={tag.id} className="flex items-center bg-muted rounded-md px-2 py-1">
+        <span className="text-sm">{tag.name}</span>
+        <Button type="button" variant="ghost" size="sm" className="h-auto p-1 ml-1" onClick={() => handleRemoveTag(tag.id)}>
+          ×
+        </Button>
+      </div>
+    ))}
+  </div>
+  <Select onValueChange={handleTagChange}>
+    <SelectTrigger>
+      <SelectValue placeholder="Add a tag" />
+    </SelectTrigger>
+    <SelectContent>
+      {tags.filter((t) => !selectedTags.some((st) => st.id === t.id)).map((tag) => (
+        <SelectItem key={tag.id} value={tag.id}>{tag.name}</SelectItem>
+      ))}
+    </SelectContent>
+  </Select>
+</div>
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Saving..." : product ? "Update Product" : "Add Product"}
-            </Button>
-          </DialogFooter>
-        </form>
+<DialogFooter>
+  <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+    Cancel
+  </Button>
+  <Button type="submit" disabled={isLoading}>
+    {isLoading ? "Saving..." : product ? "Update Product" : "Add Product"}
+  </Button>
+</DialogFooter>
+          </form>
+        </FormProvider>
       </DialogContent>
     </Dialog>
   )

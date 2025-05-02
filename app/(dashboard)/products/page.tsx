@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ProductsTable } from "@/components/products/products-table"
 import { ProductDialog } from "@/components/products/product-dialog"
-import { fetchProducts, createProduct, deleteProduct } from "@/lib/api"
+import { fetchProducts, deleteProduct, createProductWithImage } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import type { Product } from "@/types"
 
@@ -54,30 +54,37 @@ export default function ProductsPage() {
     setIsDialogOpen(true)
   }
 
-  const handleSaveProduct = async (product: Product) => {
+  const handleSaveProduct = async (formData: FormData) => {
     try {
-      if (selectedProduct) {
-        // Update existing product
-        // In a real app, this would call the API to update the product
-        setProducts(products.map((p) => (p.id === product.id ? product : p)))
-      } else {
-        // Add new product
-        const newProduct = await createProduct(product)
-        setProducts([...products, newProduct])
-      }
+      const newProduct = await createProductWithImage(formData)
+  
+      // Cập nhật danh sách sản phẩm
+      setProducts((prevProducts) => [...prevProducts, newProduct])
+  
+      // Đóng dialog tạo/chỉnh sửa
       setIsDialogOpen(false)
+  
+      // Hiển thị thông báo thành công
       toast({
         title: `Product ${selectedProduct ? "updated" : "created"} successfully`,
-        description: `${product.name} has been ${selectedProduct ? "updated" : "added"} to your inventory.`,
+        description: `${selectedProduct?.name ?? newProduct.name} has been ${
+          selectedProduct ? "updated" : "added"
+        } to your inventory.`,
       })
     } catch (error) {
+      console.error("Error saving product:", error)
+  
       toast({
         variant: "destructive",
         title: "Error saving product",
-        description: "There was a problem saving the product. Please try again.",
+        description:
+          error instanceof Error
+            ? error.message
+            : "There was a problem saving the product. Please try again.",
       })
     }
   }
+  
 
   const handleDeleteProduct = async (id: string) => {
     try {

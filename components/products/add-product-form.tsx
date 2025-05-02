@@ -2,19 +2,15 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import Image from "next/image"
 import { Loader2, X } from "lucide-react"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
-import * as z from "zod"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { MultiSelect } from "@/components/ui/multi-select"
+import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
-import { createProductWithImage } from "@/lib/api"
+import { MultiSelect } from "@/components/ui/multi-select"
 import type { Category, Tag } from "@/types"
 
 interface AddProductFormProps {
@@ -23,34 +19,35 @@ interface AddProductFormProps {
   onSuccess: () => void
 }
 
-const productFormSchema = z.object({
-  name: z.string().min(1, "Product name is required"),
-  cost: z.coerce.number().positive("Price must be a positive number"),
-  description: z.string().optional(),
-  quantity: z.coerce.number().int().nonnegative("Quantity must be a non-negative integer"),
-  category_ids: z.array(z.string()).min(1, "At least one category is required"),
-  tag_ids: z.array(z.string()).optional(),
-  image: z.instanceof(File).optional(),
-})
-
-type ProductFormValues = z.infer<typeof productFormSchema>
-
 export function AddProductForm({ categories, tags, onSuccess }: AddProductFormProps) {
   const { toast } = useToast()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [errors, setErrors] = useState<Record<string, string>>({})
 
-  const form = useForm<ProductFormValues>({
-    resolver: zodResolver(productFormSchema),
-    defaultValues: {
-      name: "",
-      cost: 0,
-      description: "",
-      quantity: 0,
-      category_ids: [],
-      tag_ids: [],
-    },
-  })
+  // Form data
+  const [name, setName] = useState("")
+  const [cost, setCost] = useState("")
+  const [description, setDescription] = useState("")
+  const [quantity, setQuantity] = useState("")
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([])
+  const [selectedTags, setSelectedTags] = useState<string[]>([])
+
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {}
+
+    if (!name.trim()) newErrors.name = "Product name is required"
+    if (!cost || isNaN(Number(cost)) || Number(cost) <= 0) newErrors.cost = "Valid price is required"
+    if (!description.trim()) newErrors.description = "Description is required"
+    if (!quantity || isNaN(Number(quantity)) || Number(quantity) < 0) newErrors.quantity = "Valid quantity is required"
+    if (selectedCategories.length === 0) newErrors.categories = "At least one category is required"
+    if (!fileInputRef.current?.files?.[0]) newErrors.image = "Product image is required"
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -77,54 +74,70 @@ export function AddProductForm({ categories, tags, onSuccess }: AddProductFormPr
         return
       }
 
-      form.setValue("image", file)
       const reader = new FileReader()
       reader.onload = () => {
         setImagePreview(reader.result as string)
       }
       reader.readAsDataURL(file)
+
+      // Clear error if exists
+      if (errors.image) {
+        setErrors((prev) => {
+          const newErrors = { ...prev }
+          delete newErrors.image
+          return newErrors
+        })
+      }
     }
   }
 
   const clearImage = () => {
-    form.setValue("image", undefined)
     setImagePreview(null)
-    // Reset the file input
-    const fileInput = document.getElementById("image") as HTMLInputElement
-    if (fileInput) fileInput.value = ""
+    if (fileInputRef.current) fileInputRef.current.value = ""
   }
 
-  const onSubmit = async (data: ProductFormValues) => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (!validateForm()) return
+
     setIsSubmitting(true)
+
     try {
-      // Create FormData object for multipart/form-data submission
       const formData = new FormData()
-      formData.append("name", data.name)
-      formData.append("cost", data.cost.toString())
-      formData.append("quantity", data.quantity.toString())
 
-      if (data.description) {
-        formData.append("description", data.description)
-      }
-
-      // Append category IDs
-      data.category_ids.forEach((id) => {
-        formData.append("category_ids", id)
-      })
-
-      // Append tag IDs if any
-      if (data.tag_ids && data.tag_ids.length > 0) {
-        data.tag_ids.forEach((id) => {
-          formData.append("tag_ids", id)
-        })
-      }
+      // Append all required fields
+      formData.append("name", name)
+      formData.append("cost", String(Number(cost)))
+      formData.append("description", description)
+      formData.append("quantity", String(Number(quantity)))
 
       // Append image if selected
-      if (data.image) {
-        formData.append("image", data.image)
+      if (fileInputRef.current?.files?.[0]) {
+        formData.append("image", fileInputRef.current.files[0])
       }
 
-      await createProductWithImage(formData)
+      // Append categories
+      selectedCategories.forEach((categoryId) => {
+        formData.append("categories", categoryId)
+      })
+
+      // Append tags if any
+      selectedTags.forEach((tagId) => {
+        formData.append("tags", tagId)
+      })
+
+      // Send request to API
+      const response = await fetch("http://localhost:8000/api/product", {
+        method: "POST",
+        body: formData,
+        // Don't set Content-Type header, browser will set it with boundary
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || `Error: ${response.status}`)
+      }
 
       toast({
         title: "Success",
@@ -132,8 +145,14 @@ export function AddProductForm({ categories, tags, onSuccess }: AddProductFormPr
       })
 
       // Reset form
-      form.reset()
+      setName("")
+      setCost("")
+      setDescription("")
+      setQuantity("")
+      setSelectedCategories([])
+      setSelectedTags([])
       setImagePreview(null)
+      if (fileInputRef.current) fileInputRef.current.value = ""
 
       // Call success callback
       onSuccess()
@@ -142,159 +161,166 @@ export function AddProductForm({ categories, tags, onSuccess }: AddProductFormPr
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to create product. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to create product. Please try again.",
       })
     } finally {
       setIsSubmitting(false)
     }
   }
 
+  const handleReset = () => {
+    setName("")
+    setCost("")
+    setDescription("")
+    setQuantity("")
+    setSelectedCategories([])
+    setSelectedTags([])
+    setImagePreview(null)
+    setErrors({})
+    if (fileInputRef.current) fileInputRef.current.value = ""
+  }
+
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-          <FormField
-            control={form.control}
-            name="name"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Product Name</FormLabel>
-                <FormControl>
-                  <Input placeholder="Enter product name" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        <div className="space-y-2">
+          <Label htmlFor="name" className={errors.name ? "text-destructive" : ""}>
+            Product Name <span className="text-destructive">*</span>
+          </Label>
+          <Input
+            id="name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Enter product name"
+            className={errors.name ? "border-destructive" : ""}
           />
-
-          <FormField
-            control={form.control}
-            name="cost"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Price ($)</FormLabel>
-                <FormControl>
-                  <Input type="number" step="0.01" min="0" placeholder="0.00" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          {errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
         </div>
 
-        <FormField
-          control={form.control}
-          name="description"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Description</FormLabel>
-              <FormControl>
-                <Textarea placeholder="Enter product description" rows={4} {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
+        <div className="space-y-2">
+          <Label htmlFor="cost" className={errors.cost ? "text-destructive" : ""}>
+            Price ($) <span className="text-destructive">*</span>
+          </Label>
+          <Input
+            id="cost"
+            type="number"
+            step="0.01"
+            min="0"
+            value={cost}
+            onChange={(e) => setCost(e.target.value)}
+            placeholder="0.00"
+            className={errors.cost ? "border-destructive" : ""}
+          />
+          {errors.cost && <p className="text-sm text-destructive">{errors.cost}</p>}
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="description" className={errors.description ? "text-destructive" : ""}>
+          Description <span className="text-destructive">*</span>
+        </Label>
+        <Textarea
+          id="description"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="Enter product description"
+          rows={4}
+          className={errors.description ? "border-destructive" : ""}
         />
+        {errors.description && <p className="text-sm text-destructive">{errors.description}</p>}
+      </div>
 
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-          <FormField
-            control={form.control}
-            name="quantity"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Quantity</FormLabel>
-                <FormControl>
-                  <Input type="number" min="0" placeholder="0" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        <div className="space-y-2">
+          <Label htmlFor="quantity" className={errors.quantity ? "text-destructive" : ""}>
+            Quantity <span className="text-destructive">*</span>
+          </Label>
+          <Input
+            id="quantity"
+            type="number"
+            min="0"
+            value={quantity}
+            onChange={(e) => setQuantity(e.target.value)}
+            placeholder="0"
+            className={errors.quantity ? "border-destructive" : ""}
           />
-
-          <FormItem>
-            <FormLabel htmlFor="image">Product Image</FormLabel>
-            <div className="flex items-center gap-4">
-              <Input id="image" type="file" accept="image/*" onChange={handleImageChange} className="max-w-sm" />
-              {imagePreview && (
-                <Button type="button" variant="ghost" size="icon" onClick={clearImage}>
-                  <X className="h-4 w-4" />
-                </Button>
-              )}
-            </div>
-            <FormDescription>Upload an image for the product (max 5MB)</FormDescription>
-          </FormItem>
+          {errors.quantity && <p className="text-sm text-destructive">{errors.quantity}</p>}
         </div>
 
-        {imagePreview && (
-          <div className="mt-2">
-            <p className="mb-2 text-sm font-medium">Image Preview:</p>
-            <div className="relative h-40 w-40 overflow-hidden rounded-md border">
-              <Image
-                src={imagePreview || "/placeholder.svg"}
-                alt="Product preview"
-                fill
-                style={{ objectFit: "cover" }}
-              />
-            </div>
+        <div className="space-y-2">
+          <Label htmlFor="image" className={errors.image ? "text-destructive" : ""}>
+            Product Image <span className="text-destructive">*</span>
+          </Label>
+          <div className="flex items-center gap-4">
+            <Input
+              id="image"
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleImageChange}
+              className={`max-w-sm ${errors.image ? "border-destructive" : ""}`}
+            />
+            {imagePreview && (
+              <Button type="button" variant="ghost" size="icon" onClick={clearImage}>
+                <X className="h-4 w-4" />
+              </Button>
+            )}
           </div>
-        )}
-
-        <FormField
-          control={form.control}
-          name="category_ids"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Categories</FormLabel>
-              <FormControl>
-                <MultiSelect
-                  placeholder="Select categories"
-                  options={categories.map((category) => ({
-                    label: category.title,
-                    value: category.id,
-                  }))}
-                  selected={field.value}
-                  onChange={field.onChange}
-                />
-              </FormControl>
-              <FormDescription>Select at least one category for the product</FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="tag_ids"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Tags</FormLabel>
-              <FormControl>
-                <MultiSelect
-                  placeholder="Select tags (optional)"
-                  options={tags.map((tag) => ({
-                    label: tag.name,
-                    value: tag.id,
-                  }))}
-                  selected={field.value || []}
-                  onChange={field.onChange}
-                />
-              </FormControl>
-              <FormDescription>Select tags to categorize the product</FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <div className="flex justify-end space-x-4">
-          <Button type="button" variant="outline" onClick={() => form.reset()}>
-            Reset
-          </Button>
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Create Product
-          </Button>
+          {errors.image && <p className="text-sm text-destructive">{errors.image}</p>}
+          <p className="text-sm text-muted-foreground">Upload an image for the product (max 5MB)</p>
         </div>
-      </form>
-    </Form>
+      </div>
+
+      {imagePreview && (
+        <div className="mt-2">
+          <p className="mb-2 text-sm font-medium">Image Preview:</p>
+          <div className="relative h-40 w-40 overflow-hidden rounded-md border">
+            <Image src={imagePreview || "/placeholder.svg"} alt="Product preview" fill style={{ objectFit: "cover" }} />
+          </div>
+        </div>
+      )}
+
+      <div className="space-y-2">
+        <Label className={errors.categories ? "text-destructive" : ""}>
+          Categories <span className="text-destructive">*</span>
+        </Label>
+        <MultiSelect
+          placeholder="Select categories"
+          options={categories.map((category) => ({
+            label: category.title,
+            value: category.id,
+          }))}
+          selected={selectedCategories}
+          onChange={setSelectedCategories}
+          className={errors.categories ? "border-destructive" : ""}
+        />
+        {errors.categories && <p className="text-sm text-destructive">{errors.categories}</p>}
+        <p className="text-sm text-muted-foreground">Select at least one category for the product</p>
+      </div>
+
+      <div className="space-y-2">
+        <Label>Tags (Optional)</Label>
+        <MultiSelect
+          placeholder="Select tags"
+          options={tags.map((tag) => ({
+            label: tag.name,
+            value: tag.id,
+          }))}
+          selected={selectedTags}
+          onChange={setSelectedTags}
+        />
+        <p className="text-sm text-muted-foreground">Select tags to categorize the product</p>
+      </div>
+
+      <div className="flex justify-end space-x-4">
+        <Button type="button" variant="outline" onClick={handleReset}>
+          Reset
+        </Button>
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          Create Product
+        </Button>
+      </div>
+    </form>
   )
 }

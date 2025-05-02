@@ -14,7 +14,7 @@ import type {
   ApiResponse,
 } from "@/types"
 
-const API_BASE_URL = "http://127.0.0.1:8000/api"
+const API_BASE_URL = "http://localhost:8000/api"
 
 // Helper function for API calls
 async function apiCall<T>(endpoint: string, options?: RequestInit): Promise<T> {
@@ -212,23 +212,28 @@ export async function fetchProductById(id: string): Promise<Product> {
 }
 
 // Create a new product
-export async function createProduct(productData: Partial<Product>): Promise<Product> {
-  try {
-    const response = await apiCall<ProductResponse>("/product", {
-      method: "POST",
-      body: JSON.stringify(productData),
-    })
-    return response.product
-  } catch (error) {
-    console.error("Failed to create product:", error)
-    throw error
-  }
-}
+// export async function createProduct(formData: FormData): Promise<Product> {
+//   try {
+//     const response = await apiCall<ProductResponse>("/product", {
+//       method: "POST",
+//       body: formData, // KHÔNG stringify
+//       // KHÔNG set Content-Type, để trình duyệt tự xử lý boundary
+//     })
+//     return response.product
+//   } catch (error) {
+//     console.error("Failed to create product:", error)
+//     throw error
+//   }
+// }
 
 // Create a new product with image upload
 export async function createProductWithImage(formData: FormData): Promise<Product> {
-  try {
-    const response = await fetch(`${API_BASE_URL}/product`, {
+  console.log("[DEBUG] API called with:");
+  for (const [key, value] of formData.entries()) {
+    console.log(` - ${key}:`, value);
+  }
+    try {
+    const response = await fetch(`http://localhost:8000/api/product`, {
       method: "POST",
       body: formData,
       // Don't set Content-Type header, let the browser set it with the boundary parameter
@@ -264,15 +269,12 @@ export async function updateProduct(id: string, productData: Partial<Product>): 
 // Delete a product
 export async function deleteProduct(id: string): Promise<void> {
   try {
-    const response = await fetch(`${API_BASE_URL}/product/delete/${id}`, {
+    await apiCall<ApiResponse>(`/product/delete/${id}`, {
       method: "DELETE",
-    });
-    if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
-    }
+    })
   } catch (error) {
-    console.error(`Failed to delete product with ID ${id}:`, error);
-    throw error;
+    console.error(`Failed to delete product with ID ${id}:`, error)
+    throw error
   }
 }
 
@@ -555,7 +557,7 @@ export async function setNewPassword(email: string, code: string, password: stri
   }
 }
 
-// // Mock data for orders
+// Mock data for orders
 // export async function fetchOrders(): Promise<Order[]> {
 //   // Simulate API call delay
 //   await new Promise((resolve) => setTimeout(resolve, 500))
