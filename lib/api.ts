@@ -14,6 +14,9 @@ import type {
   ApiResponse,
 } from "@/types"
 
+import { mockDashboardData, mockProducts } from "@/lib/mock-data"
+import axios from "axios"
+
 const API_BASE_URL = "http://localhost:8000/api"
 
 // Helper function for API calls
@@ -40,116 +43,17 @@ async function apiCall<T>(endpoint: string, options?: RequestInit): Promise<T> {
 
 // Mock data for dashboard
 export async function fetchDashboardData(): Promise<DashboardData> {
-  // Simulate API call delay
-  await new Promise((resolve) => setTimeout(resolve, 1000))
-
-  return {
-    totalRevenue: 15420.5,
-    revenueChange: 12.5,
-    totalOrders: 142,
-    pendingOrders: 23,
-    totalProducts: 48,
-    lowStockProducts: 5,
-    totalCustomers: 256,
-    newCustomers: 18,
-    salesData: [
-      { date: "Mon", amount: 1200 },
-      { date: "Tue", amount: 1800 },
-      { date: "Wed", amount: 2400 },
-      { date: "Thu", amount: 1600 },
-      { date: "Fri", amount: 2800 },
-      { date: "Sat", amount: 3200 },
-      { date: "Sun", amount: 2400 },
-    ],
-    topProducts: [
-      { name: "Espresso", value: 35 },
-      { name: "Cappuccino", value: 25 },
-      { name: "Latte", value: 20 },
-      { name: "Mocha", value: 15 },
-      { name: "Cold Brew", value: 5 },
-    ],
-    recentOrders: [
-      {
-        id: "ORD-001",
-        user: {
-          id: "USER-001",
-          email: "john@example.com",
-        },
-        products: [
-          { id: "ITEM-001", name: "Espresso", quantity: 2, price: 3.5 },
-          { id: "ITEM-002", name: "Croissant", quantity: 1, price: 2.75 },
-        ],
-        delivery: "Standard",
-        totalPrice: 10.73,
-        payment: "Credit Card",
-        created_at: "2023-04-15T10:30:00Z",
-        updated_at: "2023-04-15T10:30:00Z",
-      },
-      {
-        id: "ORD-002",
-        user: {
-          id: "USER-002",
-          email: "jane@example.com",
-        },
-        products: [
-          { id: "ITEM-003", name: "Latte", quantity: 1, price: 4.5 },
-          { id: "ITEM-004", name: "Blueberry Muffin", quantity: 2, price: 3.25 },
-        ],
-        delivery: "Express",
-        totalPrice: 12.1,
-        payment: "PayPal",
-        created_at: "2023-04-14T14:45:00Z",
-        updated_at: "2023-04-14T14:45:00Z",
-      },
-      {
-        id: "ORD-003",
-        user: {
-          id: "USER-003",
-          email: "bob@example.com",
-        },
-        products: [
-          { id: "ITEM-005", name: "Cold Brew", quantity: 2, price: 4.75 },
-          { id: "ITEM-006", name: "Bagel with Cream Cheese", quantity: 1, price: 3.5 },
-        ],
-        delivery: "Standard",
-        totalPrice: 14.3,
-        payment: "Cash",
-        created_at: "2023-04-14T09:15:00Z",
-        updated_at: "2023-04-14T09:15:00Z",
-      },
-    ],
-    lowStockItems: [
-      {
-        id: "PROD-001",
-        name: "Arabica Coffee Beans",
-        quantity: 5,
-        cost: 15.99,
-        description: "Premium coffee beans",
-        image_url: "/placeholder.svg?height=40&width=40",
-        created_at: "2023-01-15T00:00:00Z",
-        updated_at: "2023-04-10T00:00:00Z",
-      },
-      {
-        id: "PROD-002",
-        name: "Vanilla Syrup",
-        quantity: 3,
-        cost: 8.5,
-        description: "Flavored syrup",
-        image_url: "/placeholder.svg?height=40&width=40",
-        created_at: "2023-01-20T00:00:00Z",
-        updated_at: "2023-04-12T00:00:00Z",
-      },
-      {
-        id: "PROD-003",
-        name: "Almond Milk",
-        quantity: 2,
-        cost: 4.25,
-        description: "Dairy alternative",
-        image_url: "/placeholder.svg?height=40&width=40",
-        created_at: "2023-01-25T00:00:00Z",
-        updated_at: "2023-04-14T00:00:00Z",
-      },
-    ],
+  try {
+    // Try to fetch from API
+    const response = await fetch(`${API_BASE_URL}/dashboard`)
+    if (response.ok) {
+      return await response.json()
+    }
+    throw new Error("API unavailable")
+  } catch (error) {
+    console.log("Using mock dashboard data")
+    // Return mock data if API fails
+    return mockDashboardData
   }
 }
 
@@ -211,28 +115,13 @@ export async function fetchProductById(id: string): Promise<Product> {
   }
 }
 
-// Create a new product
-// export async function createProduct(formData: FormData): Promise<Product> {
-//   try {
-//     const response = await apiCall<ProductResponse>("/product", {
-//       method: "POST",
-//       body: formData, // KHÔNG stringify
-//       // KHÔNG set Content-Type, để trình duyệt tự xử lý boundary
-//     })
-//     return response.product
-//   } catch (error) {
-//     console.error("Failed to create product:", error)
-//     throw error
-//   }
-// }
-
 // Create a new product with image upload
 export async function createProductWithImage(formData: FormData): Promise<Product> {
-  console.log("[DEBUG] API called with:");
+  console.log("[DEBUG] API called with:")
   for (const [key, value] of formData.entries()) {
-    console.log(` - ${key}:`, value);
+    console.log(` - ${key}:`, value)
   }
-    try {
+  try {
     const response = await fetch(`http://localhost:8000/api/product`, {
       method: "POST",
       body: formData,
@@ -253,18 +142,51 @@ export async function createProductWithImage(formData: FormData): Promise<Produc
 }
 
 // Update a product
-export async function updateProduct(id: string, productData: Partial<Product>): Promise<Product> {
-  try {
-    const response = await apiCall<ProductResponse>(`/product/${id}`, {
-      method: "PATCH",
-      body: JSON.stringify(productData),
-    })
-    return response.product
-  } catch (error) {
-    console.error(`Failed to update product with ID ${id}:`, error)
-    throw error
-  }
-}
+// Thêm hàm mới để cập nhật sản phẩm với FormData
+// export async function updateProductWithImage(id: string, formData: FormData): Promise<Product> {
+//   try {
+//     const response = await fetch(`${API_BASE_URL}/product/edit/${id}`, {
+//       method: "PATCH",
+//       body: formData,
+//       // Không set Content-Type header, browser sẽ tự set với boundary parameter
+//     })
+
+//     if (!response.ok) {
+//       const errorData = await response.json().catch(() => ({}))
+//       throw new Error(errorData.message || `API error: ${response.status}`)
+//     }
+
+//     const data = await response.json()
+//     return data.product
+//   } catch (error) {
+//     console.log(`Using mock data for updating product ${id} with image`)
+//     // Find and update the mock product
+//     const productIndex = mockProducts.findIndex((p) => p.id === id)
+//     if (productIndex === -1) {
+//       throw new Error(`Product with ID ${id} not found`)
+//     }
+
+//     const updatedProduct = {
+//       ...mockProducts[productIndex],
+//       name: formData.get("name")?.toString() || mockProducts[productIndex].name,
+//       description: formData.get("description")?.toString() || mockProducts[productIndex].description,
+//       cost: Number(formData.get("cost")) || mockProducts[productIndex].cost,
+//       quantity: Number(formData.get("quantity")) || mockProducts[productIndex].quantity,
+//       updated_at: new Date().toISOString(),
+//     }
+
+//     // If there's a new image, update the image_url (in a real app, this would be handled properly)
+//     const imageFile = formData.get("image") as File
+//     if (imageFile && imageFile.size > 0) {
+//       updatedProduct.image_url = "/placeholder.svg?height=200&width=200" // In a real app, this would be the uploaded image URL
+//     }
+
+//     mockProducts[productIndex] = updatedProduct
+//     return updatedProduct
+//   }
+// }
+
+
 
 // Delete a product
 export async function deleteProduct(id: string): Promise<void> {

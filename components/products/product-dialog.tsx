@@ -138,88 +138,118 @@ export function ProductDialog({ open, onOpenChange, product, onSave }: ProductDi
         <FormProvider {...methods}>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-  <div className="space-y-2">
-    <label htmlFor="name" className="text-sm font-medium">Product Name</label>
-    <Input id="name" {...methods.register("name", { required: true })} />
-  </div>
-  <div className="space-y-2">
-    <label htmlFor="cost" className="text-sm font-medium">Price ($)</label>
-    <Input id="cost" type="number" step="0.01" min="0" {...methods.register("cost", { required: true })} />
-  </div>
-</div>
+              <div className="space-y-2">
+                <label htmlFor="name" className="text-sm font-medium">
+                  Product Name
+                </label>
+                <Input id="name" {...methods.register("name", { required: true })} />
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="cost" className="text-sm font-medium">
+                  Price ($)
+                </label>
+                <Input id="cost" type="number" step="0.01" min="0" {...methods.register("cost", { required: true })} />
+              </div>
+            </div>
 
-<div className="space-y-2">
-  <label htmlFor="description" className="text-sm font-medium">Description</label>
-  <Textarea id="description" rows={3} {...methods.register("description")} />
-</div>
+            <div className="space-y-2">
+              <label htmlFor="description" className="text-sm font-medium">
+                Description
+              </label>
+              <Textarea id="description" rows={3} {...methods.register("description")} />
+            </div>
 
-<div className="grid grid-cols-2 gap-4">
-  <div className="space-y-2">
-    <label htmlFor="quantity" className="text-sm font-medium">Stock Quantity</label>
-    <Input id="quantity" type="number" min="0" {...methods.register("quantity", { required: true })} />
-  </div>
-  <div className="space-y-2">
-    <label htmlFor="image" className="text-sm font-medium">Product Image</label>
-    <Input id="image" type="file" accept="image/*" onChange={handleImageChange} />
-  </div>
-</div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label htmlFor="quantity" className="text-sm font-medium">
+                  Stock Quantity
+                </label>
+                <Input id="quantity" type="number" min="0" {...methods.register("quantity", { required: true })} />
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="image" className="text-sm font-medium">
+                  Product Image
+                </label>
+                <Input id="image" type="file" accept="image/*" onChange={handleImageChange} />
+              </div>
+            </div>
 
-<div className="space-y-2">
-  <label className="text-sm font-medium">Categories</label>
-  <div className="flex flex-wrap gap-2 mb-2">
-    {selectedCategories.map((category) => (
-      <div key={category.id} className="flex items-center bg-muted rounded-md px-2 py-1">
-        <span className="text-sm">{category.title}</span>
-        <Button type="button" variant="ghost" size="sm" className="h-auto p-1 ml-1" onClick={() => handleRemoveCategory(category.id)}>
-          ×
-        </Button>
-      </div>
-    ))}
-  </div>
-  <Select onValueChange={handleCategoryChange}>
-    <SelectTrigger>
-      <SelectValue placeholder="Add a category" />
-    </SelectTrigger>
-    <SelectContent>
-      {categories.filter((c) => !selectedCategories.some((sc) => sc.id === c.id)).map((category) => (
-        <SelectItem key={category.id} value={category.id}>{category.title}</SelectItem>
-      ))}
-    </SelectContent>
-  </Select>
-</div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Categories</label>
+              <div className="flex flex-wrap gap-2 mb-2">
+                {selectedCategories.map((category) => (
+                  <div key={category.id} className="flex items-center bg-muted rounded-md px-2 py-1">
+                    <span className="text-sm">{category.title}</span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-auto p-1 ml-1"
+                      onClick={() => handleRemoveCategory(category.id)}
+                    >
+                      ×
+                    </Button>
+                  </div>
+                ))}
+              </div>
+              <Select onValueChange={handleCategoryChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Add a category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories
+                    .filter((c) => !selectedCategories.some((sc) => sc.id === c.id))
+                    .map((category) => (
+                      <SelectItem key={category.id} value={category.id}>
+                        {category.title}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-<div className="space-y-2">
-  <label className="text-sm font-medium">Tags</label>
-  <div className="flex flex-wrap gap-2 mb-2">
-    {selectedTags.map((tag) => (
-      <div key={tag.id} className="flex items-center bg-muted rounded-md px-2 py-1">
-        <span className="text-sm">{tag.name}</span>
-        <Button type="button" variant="ghost" size="sm" className="h-auto p-1 ml-1" onClick={() => handleRemoveTag(tag.id)}>
-          ×
-        </Button>
-      </div>
-    ))}
-  </div>
-  <Select onValueChange={handleTagChange}>
-    <SelectTrigger>
-      <SelectValue placeholder="Add a tag" />
-    </SelectTrigger>
-    <SelectContent>
-      {tags.filter((t) => !selectedTags.some((st) => st.id === t.id)).map((tag) => (
-        <SelectItem key={tag.id} value={tag.id}>{tag.name}</SelectItem>
-      ))}
-    </SelectContent>
-  </Select>
-</div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Tags</label>
+              <div className="flex flex-wrap gap-2 mb-2">
+                {selectedTags.map((tag) => (
+                  <div key={tag.id} className="flex items-center bg-muted rounded-md px-2 py-1">
+                    <span className="text-sm">{tag.name}</span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-auto p-1 ml-1"
+                      onClick={() => handleRemoveTag(tag.id)}
+                    >
+                      ×
+                    </Button>
+                  </div>
+                ))}
+              </div>
+              <Select onValueChange={handleTagChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Add a tag" />
+                </SelectTrigger>
+                <SelectContent>
+                  {tags
+                    .filter((t) => !selectedTags.some((st) => st.id === t.id))
+                    .map((tag) => (
+                      <SelectItem key={tag.id} value={tag.id}>
+                        {tag.name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-<DialogFooter>
-  <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-    Cancel
-  </Button>
-  <Button type="submit" disabled={isLoading}>
-    {isLoading ? "Saving..." : product ? "Update Product" : "Add Product"}
-  </Button>
-</DialogFooter>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isLoading}>
+                {isLoading ? "Saving..." : product ? "Update Product" : "Add Product"}
+              </Button>
+            </DialogFooter>
           </form>
         </FormProvider>
       </DialogContent>
