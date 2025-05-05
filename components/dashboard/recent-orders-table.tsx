@@ -1,4 +1,3 @@
-import { formatDistanceToNow } from "date-fns"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import type { Order } from "@/types"
@@ -12,30 +11,34 @@ export function RecentOrdersTable({ data }: RecentOrdersTableProps) {
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Order ID</TableHead>
-          <TableHead>Customer</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead>Date</TableHead>
-          <TableHead className="text-right">Amount</TableHead>
+          <TableHead>Mã đơn hàng</TableHead>
+          <TableHead>Khách hàng</TableHead>
+          <TableHead>Trạng thái thanh toán</TableHead>
+          <TableHead>Trạng thái giao hàng</TableHead>
+          <TableHead className="text-right">Tổng tiền</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {data.length === 0 ? (
           <TableRow>
             <TableCell colSpan={5} className="text-center">
-              No recent orders
+              Không có đơn hàng gần đây
             </TableCell>
           </TableRow>
         ) : (
           data.map((order) => (
             <TableRow key={order.id}>
-              <TableCell className="font-medium">{order.id}</TableCell>
-              <TableCell>{order.customer.name}</TableCell>
+              <TableCell className="font-medium">#{order.id}</TableCell>
+              <TableCell>{order.delivery?.name || order.user?.username || "Khách hàng"}</TableCell>
               <TableCell>
-                <OrderStatusBadge status={order.status} />
+                <PaymentStatusBadge status={order.payment?.status || "unpaid"} />
               </TableCell>
-              <TableCell>{formatDistanceToNow(new Date(order.date), { addSuffix: true })}</TableCell>
-              <TableCell className="text-right">${order.total.toFixed(2)}</TableCell>
+              <TableCell>
+                <DeliveryStatusBadge status={order.delivery_status || "pending"} />
+              </TableCell>
+              <TableCell className="text-right">
+                {Number.parseFloat(order.totalPrice || "0").toLocaleString("vi-VN")} đ
+              </TableCell>
             </TableRow>
           ))
         )}
@@ -44,15 +47,26 @@ export function RecentOrdersTable({ data }: RecentOrdersTableProps) {
   )
 }
 
-function OrderStatusBadge({ status }: { status: string }) {
-  const statusMap: Record<string, { variant: "default" | "secondary" | "destructive" | "outline" }> = {
-    pending: { variant: "outline" },
-    processing: { variant: "secondary" },
-    completed: { variant: "default" },
-    cancelled: { variant: "destructive" },
+function PaymentStatusBadge({ status }: { status: string }) {
+  const statusMap: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string }> = {
+    paid: { variant: "default", label: "Đã thanh toán" },
+    unpaid: { variant: "outline", label: "Chưa thanh toán" },
   }
 
-  const config = statusMap[status] || { variant: "outline" }
+  const config = statusMap[status] || { variant: "outline", label: status }
 
-  return <Badge variant={config.variant}>{status}</Badge>
+  return <Badge variant={config.variant}>{config.label}</Badge>
+}
+
+function DeliveryStatusBadge({ status }: { status: string }) {
+  const statusMap: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string }> = {
+    pending: { variant: "outline", label: "Đang chờ" },
+    shipped: { variant: "secondary", label: "Đang giao" },
+    delivered: { variant: "default", label: "Đã giao" },
+    cancelled: { variant: "destructive", label: "Đã hủy" },
+  }
+
+  const config = statusMap[status] || { variant: "outline", label: status }
+
+  return <Badge variant={config.variant}>{config.label}</Badge>
 }

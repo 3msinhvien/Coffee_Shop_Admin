@@ -12,8 +12,8 @@ export function LowStockTable({ data }: LowStockTableProps) {
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Product</TableHead>
-          <TableHead className="text-right">Stock</TableHead>
+          <TableHead>Sản phẩm</TableHead>
+          <TableHead className="text-right">Tồn kho</TableHead>
           <TableHead></TableHead>
         </TableRow>
       </TableHeader>
@@ -21,7 +21,7 @@ export function LowStockTable({ data }: LowStockTableProps) {
         {data.length === 0 ? (
           <TableRow>
             <TableCell colSpan={3} className="text-center">
-              No low stock items
+              Không có sản phẩm sắp hết hàng
             </TableCell>
           </TableRow>
         ) : (
@@ -33,7 +33,7 @@ export function LowStockTable({ data }: LowStockTableProps) {
                 <Button variant="ghost" size="icon" asChild>
                   <a href={`/products?id=${product.id}`}>
                     <ArrowUpRight className="h-4 w-4" />
-                    <span className="sr-only">View product</span>
+                    <span className="sr-only">Xem sản phẩm</span>
                   </a>
                 </Button>
               </TableCell>

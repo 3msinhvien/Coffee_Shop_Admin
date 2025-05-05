@@ -43,7 +43,7 @@ export function TopProductsChart({ data }: TopProductsChartProps) {
               return (
                 <Card className="p-2 shadow-lg">
                   <p className="text-sm font-medium">{payload[0].name}</p>
-                  <p className="text-sm font-bold">{payload[0].value} units sold</p>
+                  <p className="text-sm font-bold">{payload[0].value} sản phẩm đã bán</p>
                 </Card>
               )
             }

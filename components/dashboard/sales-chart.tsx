@@ -16,14 +16,19 @@ export function SalesChart({ data }: SalesChartProps) {
       <BarChart data={data} margin={{ top: 10, right: 10, left: 10, bottom: 20 }}>
         <CartesianGrid strokeDasharray="3 3" vertical={false} />
         <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={10} />
-        <YAxis tickLine={false} axisLine={false} tickFormatter={(value) => `$${value}`} tickMargin={10} />
+        <YAxis
+          tickLine={false}
+          axisLine={false}
+          tickFormatter={(value) => `${value.toLocaleString("vi-VN")} đ`}
+          tickMargin={10}
+        />
         <Tooltip
           content={({ active, payload }) => {
             if (active && payload && payload.length) {
               return (
                 <Card className="p-2 shadow-lg">
                   <p className="text-sm font-medium">{payload[0].payload.date}</p>
-                  <p className="text-sm font-bold">${payload[0].value}</p>
+                  <p className="text-sm font-bold">{payload[0].value.toLocaleString("vi-VN")} đ</p>
                 </Card>
               )
             }
