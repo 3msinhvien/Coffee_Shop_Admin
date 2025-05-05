@@ -1,54 +1,70 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { Coffee } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
-import { useAuth } from "@/lib/auth-provider"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Coffee } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/lib/auth-provider";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export default function LoginPage() {
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     username: "",
     password: "",
-  })
-  const { login } = useAuth()
-  const { toast } = useToast()
-  const router = useRouter()
+  });
+  const { login } = useAuth();
+  const { toast } = useToast();
+  const router = useRouter();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
-  }
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
+    e.preventDefault();
+    setIsLoading(true);
 
     try {
-      await login(formData.username, formData.password)
+      await login(formData.username, formData.password);
       toast({
         title: "Login successful",
         description: "Welcome to Coffee Shop Admin",
-      })
-      router.push("/dashboard")
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Login failed. Please check your credentials."
+      });
+      router.push("/dashboard");
+    } catch (error: any) {
+      const errorMessage = error
+        ? error.response.data.message
+        : "Login failed. Please check your credentials.";
       toast({
         variant: "destructive",
         title: "Login failed",
         description: errorMessage,
-      })
+      });
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      router.push("/dashboard");
+    }
+  }, []);
 
   return (
     <div className="flex h-screen w-full items-center justify-center">
@@ -57,8 +73,12 @@ export default function LoginPage() {
           <div className="flex items-center justify-center mb-2">
             <Coffee className="h-10 w-10 text-amber-600" />
           </div>
-          <CardTitle className="text-2xl text-center">Coffee Shop Admin</CardTitle>
-          <CardDescription className="text-center">Enter your credentials to access the dashboard</CardDescription>
+          <CardTitle className="text-2xl text-center">
+            Coffee Shop Admin
+          </CardTitle>
+          <CardDescription className="text-center">
+            Enter your credentials to access the dashboard
+          </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
@@ -94,5 +114,5 @@ export default function LoginPage() {
         </form>
       </Card>
     </div>
-  )
+  );
 }

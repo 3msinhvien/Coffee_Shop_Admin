@@ -1,23 +1,39 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { Bell, Coffee, Menu, Moon, Search, Sun } from "lucide-react"
-import { useTheme } from "next-themes"
-import { cn } from "@/lib/utils"
-import { useAuth } from "@/lib/auth-provider"
-import { Button } from "@/components/ui/button"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { sidebarItems } from "@/components/dashboard/sidebar"
-import { Badge } from "@/components/ui/badge"
+import { useState } from "react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { Bell, Coffee, Menu, Moon, Search, Sun } from "lucide-react";
+import { useTheme } from "next-themes";
+import { cn } from "@/lib/utils";
+import { useAuth } from "@/lib/auth-provider";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { sidebarItems } from "@/components/dashboard/sidebar";
 
 export function DashboardHeader() {
-  const { setTheme } = useTheme()
-  const { logout } = useAuth()
-  const pathname = usePathname()
-  const [isSearchOpen, setIsSearchOpen] = useState(false)
+  const router = useRouter();
+  const { setTheme } = useTheme();
+  const { logout } = useAuth();
+  const pathname = usePathname();
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const isAuth = !!localStorage.getItem("token");
+
+  const handleClick = () => {
+    if (isAuth) {
+      logout();
+      setTheme("system");
+      router.push("/login");
+    } else {
+      router.push("/login");
+    }
+  };
 
   return (
     <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background px-4 sm:px-6">
@@ -31,7 +47,10 @@ export function DashboardHeader() {
           </SheetTrigger>
           <SheetContent side="left" className="w-64 p-0">
             <div className="flex h-14 items-center border-b px-4">
-              <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
+              <Link
+                href="/dashboard"
+                className="flex items-center gap-2 font-semibold"
+              >
                 <Coffee className="h-6 w-6 text-amber-600" />
                 <span>Coffee Shop Admin</span>
               </Link>
@@ -41,7 +60,10 @@ export function DashboardHeader() {
                 <Button
                   key={item.href}
                   variant="ghost"
-                  className={cn("justify-start", pathname === item.href && "bg-muted font-medium")}
+                  className={cn(
+                    "justify-start",
+                    pathname === item.href && "bg-muted font-medium"
+                  )}
                   asChild
                 >
                   <Link href={item.href}>
@@ -57,14 +79,19 @@ export function DashboardHeader() {
 
       <div className="flex w-full items-center justify-between md:justify-end">
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={() => setIsSearchOpen(!isSearchOpen)} className="md:hidden">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsSearchOpen(!isSearchOpen)}
+            className="hidden"
+          >
             <Search className="h-5 w-5" />
             <span className="sr-only">Search</span>
           </Button>
-          <Button variant="ghost" size="icon">
+          {/* <Button variant="ghost" size="icon">
             <Bell className="h-5 w-5" />
             <span className="sr-only">Notifications</span>
-          </Button>
+          </Button> */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon">
@@ -74,19 +101,25 @@ export function DashboardHeader() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setTheme("light")}>Light</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setTheme("dark")}>Dark</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setTheme("system")}>System</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setTheme("light")}>
+                Light
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setTheme("dark")}>
+                Dark
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setTheme("system")}>
+                System
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button variant="outline" size="sm" asChild>
-            <Link href="/login">Login</Link>
+          <Button variant="outline" size="sm" onClick={handleClick}>
+            {isAuth ? "Logout" : "Login"}
           </Button>
-          <Badge variant="outline" className="ml-2">
+          {/* <Badge variant="outline" className="ml-2">
             Preview Mode
-          </Badge>
+          </Badge> */}
         </div>
       </div>
     </header>
-  )
+  );
 }

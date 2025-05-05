@@ -1,25 +1,22 @@
-import type { User } from "@/types"
+"use client";
 
-export async function loginUser(email: string, password: string): Promise<{ token: string; user: User }> {
-  // This is a placeholder implementation.
-  // In a real application, this function would make an API call to authenticate the user.
-  // It would then return a token and user data upon successful authentication.
+import type { User } from "@/types";
+import axios from "axios";
 
-  // Simulate a successful login for the admin user
-  if (email === "admin@coffeeshop.com" && password === "password") {
-    return {
-      token: "mock-admin-token",
-      user: {
-        id: "admin-user-id",
-        username: "admin",
-        email: "admin@coffeeshop.com",
-        is_admin: true,
-        address: "Some Admin Address",
-        phoneNumber: "123-456-7890",
-      },
-    }
+export async function loginUser(
+  email: string,
+  password: string
+): Promise<{ token: string; user: User; message: string }> {
+  try {
+    const response = await axios.post(
+      "http://localhost:8000/api/user/adminLogin",
+      { email, password }
+    );
+    return response.data;
+  } catch (error: any) {
+    return Promise.reject(error);
   }
 
   // Simulate a failed login
-  throw new Error("Invalid credentials")
+  throw new Error("Invalid credentials");
 }

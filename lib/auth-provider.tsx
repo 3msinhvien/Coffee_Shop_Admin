@@ -39,7 +39,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Check if user is admin
       if (!response.user.is_admin) {
-        throw new Error("Access denied. Only administrators can log in.")
+        throw new Error(response.message || "You are not authorized to access this page")
       }
 
       // Store token in localStorage
