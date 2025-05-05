@@ -39,10 +39,11 @@ export default function LoginPage() {
       })
       router.push("/dashboard")
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Login failed. Please check your credentials."
       toast({
         variant: "destructive",
         title: "Login failed",
-        description: "Please check your credentials and try again",
+        description: errorMessage,
       })
     } finally {
       setIsLoading(false)

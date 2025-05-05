@@ -5,14 +5,18 @@ interface OrderStatusBadgeProps {
 }
 
 export function OrderStatusBadge({ status }: OrderStatusBadgeProps) {
-  const statusMap: Record<string, { variant: "default" | "secondary" | "destructive" | "outline" }> = {
-    pending: { variant: "outline" },
-    processing: { variant: "secondary" },
-    completed: { variant: "default" },
-    cancelled: { variant: "destructive" },
+  const statusMap: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string }> = {
+    pending: { variant: "outline", label: "Pending" },
+    processing: { variant: "secondary", label: "Processing" },
+    completed: { variant: "default", label: "Completed" },
+    cancelled: { variant: "destructive", label: "Cancelled" },
+    unpaid: { variant: "outline", label: "Unpaid" },
+    paid: { variant: "default", label: "Paid" },
+    shipped: { variant: "secondary", label: "Shipped" },
+    delivered: { variant: "default", label: "Delivered" },
   }
 
-  const config = statusMap[status] || { variant: "outline" }
+  const config = statusMap[status] || { variant: "outline", label: status }
 
-  return <Badge variant={config.variant}>{status}</Badge>
+  return <Badge variant={config.variant}>{config.label}</Badge>
 }

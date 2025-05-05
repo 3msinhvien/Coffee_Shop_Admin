@@ -119,10 +119,10 @@ export function AddProductForm({ categories, tags, onSuccess }: AddProductFormPr
 
       // Append categories and tags
       selectedTags?.forEach((tag) => {
-        formData.append("tags[]", tag);
+        formData.append("tags", tag);
       });
       selectedCategories?.forEach((category) => {
-        formData.append("categories[]", category);
+        formData.append("categories", category);
       })
 
       // Send request to API

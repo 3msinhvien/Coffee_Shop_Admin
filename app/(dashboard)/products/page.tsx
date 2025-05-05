@@ -113,7 +113,7 @@ export default function ProductsPage() {
   // }
   const handleSaveProduct = async (formData: FormData) => {
     try {
-      let savedProduct
+      let savedProduct: any
 
       if (selectedProduct) {
         // Update existing product using axios

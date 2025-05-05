@@ -77,13 +77,15 @@ export function ProductsTable({ products, onEdit, onDelete }: ProductsTableProps
                   </TableCell>
                   <TableCell className="font-medium">{product.name}</TableCell>
                   <TableCell>
-                    {product.categories?.map((category) => (
-                      <Badge key={category.id} variant="outline" className="mr-1">
+                    {product.categories?.map((category, idx) => (
+                      <Badge key={`${category.id}-${idx}`} variant="outline" className="mr-1">
                         {category.title}
                       </Badge>
                     ))}
                   </TableCell>
-                  <TableCell className="hidden md:table-cell">${product.cost.toFixed(2)}</TableCell>
+                  <TableCell className="hidden md:table-cell">
+                    ${Number(product.cost).toFixed(2)}
+                  </TableCell>
                   <TableCell className="hidden md:table-cell">{product.quantity}</TableCell>
                   <TableCell className="hidden md:table-cell">
                     <Badge variant={product.quantity > 10 ? "default" : "destructive"}>

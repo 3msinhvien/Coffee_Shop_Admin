@@ -61,16 +61,39 @@ export interface Review {
   created_at: string
 }
 
-// Order types
+// Updated Order types to match the API response
 export interface Order {
-  id: string
-  user: User
-  products: OrderProduct[]
-  delivery: string
-  totalPrice: number
-  payment: string
+  id: number
+  user: {
+    id: string
+    username: string
+    email: string
+  }
+  delivery: {
+    address: string
+    name: string
+    phone: string
+  }
+  totalPrice: string
+  payment: {
+    id: string | null
+    method: string
+    status: string
+  }
+  delivery_status: string
   created_at: string
   updated_at: string
+  carts: CartItem[]
+  // Keep these for backward compatibility
+  customer?: Customer
+  date?: string
+  status?: string
+  total?: number
+  subtotal?: number
+  tax?: number
+  shipping?: number
+  items?: OrderProduct[]
+  products?: OrderProduct[]
 }
 
 export interface OrderProduct {
@@ -98,8 +121,13 @@ export interface Address {
 // User types
 export interface User {
   id: string
-  name?: string
+  username: string
   email: string
+  address?: string
+  phoneNumber?: string
+  is_admin: boolean
+  // Keep these for backward compatibility
+  name?: string
   role?: string
   isActive?: boolean
 }
@@ -141,12 +169,21 @@ export interface CartResponse {
 
 export interface CartItem {
   id: number
+  user?: string
   product: Product
   quantity: number
-  price: number
+  price?: number
+  created_at?: string
+  updated_at?: string
+  is_paid?: boolean
+  order?: number
 }
 
 export interface ApiResponse {
   status: string
   message: string
+}
+
+export interface OrdersResponse {
+  orders: Order[]
 }

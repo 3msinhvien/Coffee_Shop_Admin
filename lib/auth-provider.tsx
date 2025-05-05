@@ -4,6 +4,7 @@ import type React from "react"
 
 import { createContext, useContext, useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
+import { loginUser } from "@/lib/login"
 
 interface AuthContextType {
   isAuthenticated: boolean
@@ -34,18 +35,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (username: string, password: string) => {
     try {
       // In a real app, this would call your API
-      // For demo purposes, we'll just simulate a successful login
-      if (username && password) {
-        // Simulate API call delay
-        await new Promise((resolve) => setTimeout(resolve, 1000))
+      const response = await loginUser(username, password)
 
-        // Store token in localStorage
-        localStorage.setItem("token", "demo-token")
-        setIsAuthenticated(true)
-        setPreviewMode(false) // Turn off preview mode when authenticated
-        return
+      // Check if user is admin
+      if (!response.user.is_admin) {
+        throw new Error("Access denied. Only administrators can log in.")
       }
-      throw new Error("Invalid credentials")
+
+      // Store token in localStorage
+      localStorage.setItem("token", response.token)
+      setIsAuthenticated(true)
+      setPreviewMode(false) // Turn off preview mode when authenticated
+      return
     } catch (error) {
       throw error
     }

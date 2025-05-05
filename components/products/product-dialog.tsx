@@ -105,8 +105,8 @@ export function ProductDialog({ open, onOpenChange, product, onSave }: ProductDi
       formData.append("cost", data.cost.toString())
       formData.append("quantity", data.quantity.toString())
       if (image) formData.append("image", image)
-      selectedCategories.forEach((c) => formData.append("categories[]", c.id))
-      selectedTags.forEach((t) => formData.append("tags[]", t.id))
+      selectedCategories.forEach((c) => formData.append("categories", c.id))
+      selectedTags.forEach((t) => formData.append("tags", t.id))
 
       onSave(formData)
 

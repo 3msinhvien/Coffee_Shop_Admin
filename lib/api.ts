@@ -12,9 +12,10 @@ import type {
   PriceRangeResponse,
   CartResponse,
   ApiResponse,
+  OrdersResponse, // Added OrdersResponse import
 } from "@/types"
 
-import { mockDashboardData, mockProducts } from "@/lib/mock-data"
+import { mockDashboardData } from "@/lib/mock-data"
 import axios from "axios"
 
 const API_BASE_URL = "http://localhost:8000/api"
@@ -185,8 +186,6 @@ export async function createProductWithImage(formData: FormData): Promise<Produc
 //     return updatedProduct
 //   }
 // }
-
-
 
 // Delete a product
 export async function deleteProduct(id: string): Promise<void> {
@@ -401,15 +400,44 @@ export async function removeFromCart(cartId: number): Promise<ApiResponse> {
 
 // Mock data for users
 export async function fetchUsers(): Promise<User[]> {
-  // Simulate API call delay
-  await new Promise((resolve) => setTimeout(resolve, 1000))
+  try {
+    const response = await apiCall<{ users: User[] }>("/user/all")
+    return response.users
+  } catch (error) {
+    console.error("Failed to fetch users:", error)
+    // Return mock data if API fails
+    return [
+      {
+        id: "USER-001",
+        username: "admin",
+        email: "admin@coffeeshop.com",
+        is_admin: true,
+        address: "",
+        phoneNumber: "",
+      },
+      {
+        id: "USER-002",
+        username: "staff1",
+        email: "staff1@coffeeshop.com",
+        is_admin: false,
+        address: "123 Coffee St",
+        phoneNumber: "555-1234",
+      },
+    ]
+  }
+}
 
-  return [
-    { id: "USER-001", name: "Admin User", email: "admin@coffeeshop.com", role: "admin", isActive: true },
-    { id: "USER-002", name: "Staff One", email: "staff1@coffeeshop.com", role: "staff", isActive: true },
-    { id: "USER-003", name: "Staff Two", email: "staff2@coffeeshop.com", role: "staff", isActive: true },
-    { id: "USER-004", name: "Former Employee", email: "former@coffeeshop.com", role: "staff", isActive: false },
-  ]
+// Add a new function to update a user
+export async function updateUser(userId: string, userData: Partial<User>): Promise<ApiResponse> {
+  try {
+    return await apiCall<ApiResponse>(`/user/edit/${userId}`, {
+      method: "PATCH",
+      body: JSON.stringify(userData),
+    })
+  } catch (error) {
+    console.error("Failed to update user:", error)
+    throw error
+  }
 }
 
 // User authentication
@@ -419,6 +447,8 @@ export async function loginUser(email: string, password: string): Promise<{ toke
       method: "POST",
       body: JSON.stringify({ email, password }),
     })
+
+    // Return the response directly, admin check will be done in auth provider
     return response
   } catch (error) {
     console.error("Login failed:", error)
@@ -479,81 +509,31 @@ export async function setNewPassword(email: string, code: string, password: stri
   }
 }
 
-// Mock data for orders
-// export async function fetchOrders(): Promise<Order[]> {
-//   // Simulate API call delay
-//   await new Promise((resolve) => setTimeout(resolve, 500))
+// Fetch orders from API
+export async function fetchOrders(): Promise<Order[]> {
+  try {
+    const response = await axios.get<OrdersResponse>(`${API_BASE_URL}/order/all`)
+    return response.data.orders
+  } catch (error) {
+    console.error("Failed to fetch orders:", error)
+    throw error
+  }
+}
 
-//   return [
-//     {
-//       id: "ORD-001",
-//       customer: {
-//         name: "John Doe",
-//         email: "john.doe@example.com",
-//         phone: "123-456-7890",
-//         address: {
-//           street: "123 Main St",
-//           city: "Anytown",
-//           state: "CA",
-//           zip: "91234",
-//           country: "USA",
-//         },
-//       },
-//       date: "2024-01-20T14:30:00Z",
-//       status: "processing",
-//       total: 55.5,
-//       subtotal: 50.0,
-//       tax: 2.5,
-//       shipping: 3.0,
-//       items: [
-//         { id: "ITEM-001", name: "Latte", quantity: 2, price: 4.5 },
-//         { id: "ITEM-002", name: "Muffin", quantity: 1, price: 6.0 },
-//       ],
-//       user: {
-//         id: "USER-001",
-//         email: "john@example.com",
-//       },
-//       products: [],
-//       delivery: "",
-//       totalPrice: 0,
-//       payment: "",
-//       created_at: "",
-//       updated_at: "",
-//     },
-//     {
-//       id: "ORD-002",
-//       customer: {
-//         name: "Jane Smith",
-//         email: "jane.smith@example.com",
-//         phone: "987-654-3210",
-//         address: {
-//           street: "456 Oak Ave",
-//           city: "Springfield",
-//           state: "IL",
-//           zip: "62704",
-//           country: "USA",
-//         },
-//       },
-//       date: "2024-01-22T09:15:00Z",
-//       status: "pending",
-//       total: 32.0,
-//       subtotal: 30.0,
-//       tax: 1.5,
-//       shipping: 0.5,
-//       items: [
-//         { id: "ITEM-003", name: "Coffee", quantity: 3, price: 3.0 },
-//         { id: "ITEM-004", name: "Donut", quantity: 2, price: 4.5 },
-//       ],
-//       user: {
-//         id: "USER-001",
-//         email: "john@example.com",
-//       },
-//       products: [],
-//       delivery: "",
-//       totalPrice: 0,
-//       payment: "",
-//       created_at: "",
-//       updated_at: "",
-//     },
-//   ]
-// }
+// Update order status
+export async function updateOrderStatus(
+  id: number,
+  data: { payment_status?: string; delivery_status?: string },
+): Promise<ApiResponse> {
+  try {
+    const formData = new FormData()
+    if (data.payment_status) formData.append("payment_status", data.payment_status)
+    if (data.delivery_status) formData.append("delivery_status", data.delivery_status)
+
+    const response = await axios.patch<ApiResponse>(`${API_BASE_URL}/order/update/${id}`, formData)
+    return response.data
+  } catch (error) {
+    console.error(`Failed to update order status for ID ${id}:`, error)
+    throw error
+  }
+}
